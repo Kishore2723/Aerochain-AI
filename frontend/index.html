@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroChain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#0C0C0C',        // Main Canvas
+                        sidebar: '#080808',   // Sidebar (Deep Matte)
+                        surface: '#141414',   // Input Dock / Cards
+                        border: '#27272a',    // Subtle Border
+                        textp: '#EDEDED',     // Primary Text (Soft White)
+                        texts: '#888888',     // Secondary Text
+                        accent: '#6E56CF',    // Muted Violet (Action)
+                        hover: '#1F1F1F',     // Hover State
+                        userbubble: '#1F1F1F' // User Message Bubble
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    maxWidth: {
+                        'chat': '48rem',
+                    },
+                    boxShadow: {
+                        'dock': '0 20px 40px -10px rgba(0, 0, 0, 0.5)',
+                        'glow': '0 0 20px rgba(110, 86, 207, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0C0C0C;
+            color: #EDEDED;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Markdown */
+        .prose pre {
+            background: #080808;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #27272a;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .prose code {
+            font-family: 'JetBrains Mono';
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.2rem 0.3rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .prose pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .prose p {
+            margin-bottom: 0.8em;
+            line-height: 1.6;
+            color: #D4D4D4;
+        }
+
+        .prose p:last-child {
+            margin-bottom: 0;
+        }
+
+        .prose strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .prose ul,
+        .prose ol {
+            margin-bottom: 0.8em;
+            padding-left: 1.5rem;
+            color: #D4D4D4;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+
+        /* Drag Overlay */
+        body.dragging .drag-overlay {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        .drag-overlay {
+            transition: all 0.2s ease-out;
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+
+<body class="h-screen flex overflow-hidden selection:bg-accent/30 selection:text-white">
+
+    <!-- Drag Overlay -->
+    <div
+        class="drag-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none">
+        <div class="bg-surface border border-accent/50 rounded-2xl p-8 text-center shadow-2xl">
+            <div class="text-accent text-3xl mb-2">Drag & Drop</div>
+            <div class="text-texts">Release to attach files to context</div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div
+        class="w-[260px] bg-sidebar flex-shrink-0 flex flex-col border-r border-[#1a1a1a] hidden md:flex transition-all duration-300 relative z-20">
+        <!-- New Chat -->
+        <div class="p-4">
+            <button onclick="window.location.reload()"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-hover transition-all duration-200 text-sm text-textp border border-transparent hover:border-[#333] group shadow-sm hover:shadow">
+                <div class="bg-white/10 text-white rounded p-1"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg></div>
+                <span class="font-medium">New Session</span>
+            </button>
+        </div>
+
+        <!-- History -->
+        <div class="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+            <div class="text-[11px] font-medium text-texts uppercase tracking-wider px-2 py-2 mb-1">Recent</div>
+            <button
+                class="w-full text-left px-3 py-2 rounded-md hover:bg-hover text-sm text-texts hover:text-textp truncate transition-colors duration-200">System
+                Architecture V3</button>
+            <button
+                class="w-full text-left px-3 py-2 rounded-md hover:bg-hover text-sm text-texts hover:text-textp truncate transition-colors duration-200">Q4
+                Financial Analysis</button>
+            <button
+                class="w-full text-left px-3 py-2 rounded-md hover:bg-hover text-sm text-texts hover:text-textp truncate transition-colors duration-200">Python
+                Optimization</button>
+        </div>
+
+        <!-- User -->
+        <div class="p-4 border-t border-[#1a1a1a]">
+            <button
+                class="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-hover transition-colors text-sm text-textp text-left">
+                <div
+                    class="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-white/10 flex items-center justify-center text-xs font-medium">
+                    JD</div>
+                <div class="flex flex-col">
+                    <span class="font-medium">John Doe</span>
+                    <span class="text-xs text-texts">Enterprise</span>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-full relative bg-bg">
+
+        <!-- Chat Stream -->
+        <div id="chat-container" class="flex-1 overflow-y-auto w-full">
+            <div class="w-full max-w-chat mx-auto px-4 md:px-0 py-12 pb-48 space-y-8">
+
+                <!-- Welcome State -->
+                <div id="welcome-screen"
+                    class="flex flex-col items-center justify-center min-h-[50vh] text-center opacity-100 transition-opacity duration-500">
+                    <div class="mb-6 relative group">
+                        <div
+                            class="absolute inset-0 bg-accent/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                        </div>
+                        <img src="/static/logo.png"
+                            class="w-16 h-16 relative z-10 grayscale hover:grayscale-0 transition-all duration-500"
+                            alt="Logo">
+                    </div>
+                    <h1 class="text-3xl font-medium tracking-tight text-white mb-3">AeroChain Enterprise</h1>
+                    <p class="text-texts max-w-md">The high-performance workspace for elite engineering teams.</p>
+
+                    <div class="grid grid-cols-2 gap-3 w-full max-w-lg mt-10">
+                        <button onclick="setInput('Review the attached deployment logs')"
+                            class="p-4 bg-surface border border-border rounded-xl hover:border-accent/40 text-left transition-all duration-300 group">
+                            <div class="text-accent mb-2 opactiy-80 group-hover:opacity-100"><svg width="20" height="20"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg></div>
+                            <span class="text-sm font-medium text-textp">Analyze Logs</span>
+                        </button>
+                        <button onclick="setInput('Draft a technical specification (RFC)')"
+                            class="p-4 bg-surface border border-border rounded-xl hover:border-accent/40 text-left transition-all duration-300 group">
+                            <div class="text-accent mb-2 opactiy-80 group-hover:opacity-100"><svg width="20" height="20"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg></div>
+                            <span class="text-sm font-medium text-textp">Draft RFC</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div id="messages-area" class="space-y-8"></div>
+            </div>
+        </div>
+
+        <!-- Floating Input Dock -->
+        <div class="absolute bottom-6 left-0 right-0 px-4 flex justify-center z-30">
+            <div class="w-full max-w-chat bg-surface/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-dock p-2 transition-all duration-300"
+                id="input-dock">
+
+                <!-- File Chips -->
+                <div id="attachment-area" class="px-3 pt-2 pb-1 flex gap-2 hidden"></div>
+
+                <div class="flex items-end gap-2 p-1">
+                    <!-- File Trigger -->
+                    <button onclick="document.getElementById('file_input').click()"
+                        class="p-3 text-texts hover:text-white hover:bg-white/5 rounded-xl transition-colors shrink-0">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                    </button>
+                    <input type="file" id="file_input" class="hidden">
+
+                    <!-- Text Area -->
+                    <textarea id="user-input" rows="1"
+                        class="flex-1 bg-transparent border-0 focus:ring-0 text-textp placeholder-texts/50 resize-none py-3 text-[15px] leading-relaxed max-h-[200px]"
+                        placeholder="Type a message..." style="min-height: 48px;"></textarea>
+
+                    <!-- Send Button -->
+                    <button id="send-btn" onclick="sendMessage()"
+                        class="p-2.5 bg-accent text-white rounded-xl shadow-glow opacity-50 cursor-not-allowed hover:opacity-100 transition-all shrink-0"
+                        disabled>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <line x1="12" y1="19" x2="12" y2="5" />
+                            <polyline points="5 12 12 5 19 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latency Jewel (Subtle) -->
+        <div class="fixed bottom-3 right-4 text-[10px] text-[#333] font-mono select-none">
+            LATENCY: <span id="latency-counter">0ms</span>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const messagesArea = document.getElementById('messages-area');
+        const userInput = document.getElementById('user-input');
+        const fileInput = document.getElementById('file_input');
+        const sendBtn = document.getElementById('send-btn');
+        const attachmentArea = document.getElementById('attachment-area');
+        const inputDock = document.getElementById('input-dock');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const latencyCounter = document.getElementById('latency-counter');
+
+        let currentFile = null;
+        let isGenerating = false;
+
+        // Auto-resize
+        userInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            sendBtn.disabled = this.value.trim().length === 0 && !currentFile;
+            sendBtn.style.opacity = sendBtn.disabled ? '0.5' : '1';
+            sendBtn.style.cursor = sendBtn.disabled ? 'not-allowed' : 'pointer';
+        });
+
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.setInput = (text) => {
+            userInput.value = text;
+            userInput.focus();
+            userInput.dispatchEvent(new Event('input'));
+        }
+
+        // --- File Handling ---
+        fileInput.addEventListener('change', handleFileSelect);
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            currentFile = file;
+            attachmentArea.classList.remove('hidden');
+            attachmentArea.innerHTML = `
+                <div class="bg-[#222] border border-[#333] text-xs text-textp px-3 py-1.5 rounded-full flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                    <span class="text-accent opacity-80">�</span>
+                    <span class="font-medium max-w-[150px] truncate">${file.name}</span>
+                    <button onclick="clearFile()" class="ml-1 hover:text-white text-texts transition-colors">×</button>
+                </div>
+            `;
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            userInput.focus();
+        }
+
+        function clearFile() {
+            currentFile = null;
+            fileInput.value = '';
+            attachmentArea.innerHTML = '';
+            attachmentArea.classList.add('hidden');
+            sendBtn.disabled = userInput.value.trim().length === 0;
+            if (sendBtn.disabled) sendBtn.style.opacity = '0.5';
+        }
+
+        // Drag & Drop
+        document.body.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
+        document.body.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
+        document.body.addEventListener('drop', e => {
+            e.preventDefault();
+            document.body.classList.remove('dragging');
+            if (e.dataTransfer.files[0]) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect({ target: { files: e.dataTransfer.files } });
+            }
+        });
+
+        // --- Message Logic ---
+        function appendMessage(role, content) {
+            const div = document.createElement('div');
+            const isUser = role === 'user';
+
+            div.className = `w-full flex gap-6 ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`;
+
+            if (isUser) {
+                div.innerHTML = `
+                    <div class="bg-userbubble text-textp px-5 py-3.5 rounded-2xl rounded-tr-md max-w-[85%] leading-relaxed whitespace-pre-wrap shadow-sm border border-white/5">${content}</div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-transparent flex items-start justify-center pt-1">
+                        <img src="/static/logo.png" class="w-6 h-6 opacity-80" alt="Logo">
+                    </div>
+                    <div class="flex-1 min-w-0 pt-1 space-y-1">
+                        <div class="font-medium text-sm text-textp opacity-90 mb-2">AeroChain</div>
+                        <div class="prose prose-invert max-w-none text-[15px] ai-content"></div>
+                    </div>
+                `;
+            }
+
+            messagesArea.appendChild(div);
+            // Smooth scroll
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+
+            if (!isUser) return div.querySelector('.ai-content');
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if ((!text && !currentFile) || isGenerating) return;
+
+            const fileToSend = currentFile;
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            clearFile();
+            isGenerating = true;
+            if (welcomeScreen) welcomeScreen.style.opacity = '0';
+            setTimeout(() => welcomeScreen?.remove(), 500);
+
+            appendMessage('user', text || `[Attached File: ${fileToSend.name}]`);
+
+            const aiContentEl = appendMessage('ai', '');
+
+            // Premium Loading State (No text needed, just start streaming)
+            const startTime = performance.now();
+            let firstToken = true;
+            let fullText = "";
+
+            try {
+                const formData = new FormData();
+                formData.append('message', text || "Analyze this file.");
+                if (fileToSend) formData.append('file', fileToSend);
+
+                const response = await fetch('/chat', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error("Connection failed");
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    if (firstToken) {
+                        const latency = Math.round(performance.now() - startTime);
+                        latencyCounter.textContent = latency + 'ms';
+                        firstToken = false;
+                    }
+
+                    const chunk = decoder.decode(value);
+                    fullText += chunk;
+                    aiContentEl.innerHTML = marked.parse(fullText);
+                    chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'instant' }); // Instant keeping up with stream
+                }
+
+            } catch (err) {
+                aiContentEl.innerHTML += `\n\n<div class="text-red-400 text-sm border-l-2 border-red-500 pl-3 py-1">System Alert: ${err.message}</div>`;
+            } finally {
+                isGenerating = false;
+                userInput.focus();
+            }
+        }
+    </script>
+</body>
+
+</html>
